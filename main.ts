@@ -17,7 +17,18 @@ const target = join(outDir, "entry.png");
 copyFileSync(source, target);
 // Verify the copy is whole: same length and same sha256 as the source,
 // so a truncated write fails loudly instead of shipping a broken image.
-const sha256 = (p: string) => createHash("sha256").update(readFileSync(p)).digest("hex");
-if (readFileSync(target).length !== readFileSync(source).length || sha256(target) !== sha256(source)) {
-  throw new Error("entry.png was not copied whole");
+// Each file is read once; a size mismatch and a hash mismatch are reported
+// separately, with the numbers, so the failure tells you which check broke.
+const sourceBytes = readFileSync(source);
+const targetBytes = readFileSync(target);
+if (targetBytes.length !== sourceBytes.length) {
+  throw new Error(
+    `entry.png was not copied whole: expected ${sourceBytes.length} bytes, got ${targetBytes.length}`
+  );
+}
+const sha256 = (b: Buffer) => createHash("sha256").update(b).digest("hex");
+if (sha256(targetBytes) !== sha256(sourceBytes)) {
+  throw new Error(
+    `entry.png was not copied whole: sha256 mismatch, expected ${sha256(sourceBytes)}, got ${sha256(targetBytes)}`
+  );
 }
